@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, jidDecode, downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, jidDecode, downloadContentFromMessage, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
@@ -12,11 +12,11 @@ connectDB();
 // 2. Web Server (Keeps Render Alive)
 const server = http.createServer((req, res) => {
     res.writeHead(200);
-    res.end('Bot is running in QR Mode');
+    res.end(`Bot Status: Online | Mode: ${config.workMode}`);
 });
 server.listen(process.env.PORT || 3000);
 
-// 3. Load Session (Only if you have a string, otherwise we generate new)
+// 3. Load Session
 if (config.sessionID && config.sessionID.startsWith('ULTRA~')) {
     if (!fs.existsSync('./auth_info')) fs.mkdirSync('./auth_info');
     const creds = Buffer.from(config.sessionID.replace('ULTRA~', ''), 'base64');
@@ -26,41 +26,63 @@ if (config.sessionID && config.sessionID.startsWith('ULTRA~')) {
 // 4. Load Commands
 const commands = new Map();
 const cmdFolder = path.join(__dirname, 'commands');
-if (fs.existsSync(cmdFolder)) {
-    fs.readdirSync(cmdFolder).forEach(file => {
-        if (file.endsWith('.js')) {
-            const cmd = require(path.join(cmdFolder, file));
-            commands.set(cmd.name, cmd);
-            if (cmd.alias) cmd.alias.forEach(a => commands.set(a, cmd));
-        }
-    });
-}
+if (!fs.existsSync(cmdFolder)) fs.mkdirSync(cmdFolder);
+fs.readdirSync(cmdFolder).forEach(file => {
+    if (file.endsWith('.js')) {
+        const cmd = require(path.join(cmdFolder, file));
+        commands.set(cmd.name, cmd);
+        if (cmd.alias) cmd.alias.forEach(a => commands.set(a, cmd));
+    }
+});
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
+    const { version } = await fetchLatestBaileysVersion();
+    
+    // Clean phone number
+    const myNumber = config.ownerNumber.replace(/[^0-9]/g, '');
 
-    // 🟢 QR CODE MODE CONFIGURATION 🟢
     const sock = makeWASocket({
+        version,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: true, // ✅ TRUE = Print QR Code
+        printQRInTerminal: false, // PAIRING MODE
         auth: state,
-        // We remove the specific browser config so it looks like a normal Web Login
-        browser: [config.botName, "Chrome", "1.0"],
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        generateHighQualityLinkPreview: true,
+        // Tweak: Increase timeout
+        connectTimeoutMs: 60000, 
     });
+
+    // 🟢 PAIRING LOGIC (Robust)
+    if (!sock.authState.creds.registered) {
+        console.log(`\n⏳ Waiting 15 seconds to stabilize connection...`);
+        
+        setTimeout(async () => {
+            try {
+                console.log(`\n🤖 REQUESTING PAIRING CODE FOR: ${myNumber}...`);
+                const code = await sock.requestPairingCode(myNumber);
+                console.log(`\n⬇️⬇️ COPY THIS CODE ⬇️⬇️`);
+                console.log(`\n   ${code}   \n`);
+                console.log(`⬆️⬆️ ENTER THIS ON WHATSAPP ⬆️⬆️\n`);
+            } catch (err) {
+                console.log("❌ Failed to get code. WhatsApp might be busy.");
+            }
+        }, 15000);
+    }
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
+        const { connection, lastDisconnect } = update;
         
-        if (qr) {
-            console.log("🟢 QR CODE GENERATED. PLEASE SCAN!");
-        }
-
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+            
+            // Log the reason for debugging
+            console.log('Connection closed due to', lastDisconnect.error, ', reconnecting:', shouldReconnect);
+
+            // Reconnect immediately if we are logged in OR if it was a random network glitch
             if (shouldReconnect) {
-                console.log("⚠️ Connection closed. Reconnecting...");
                 startBot();
             }
         } else if (connection === 'open') {
@@ -68,7 +90,7 @@ async function startBot() {
         }
     });
 
-    // --- MESSAGES HANDLER (Keep your existing logic) ---
+    // --- MESSAGES HANDLER ---
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
         if (!msg.message || msg.key.fromMe) return;
@@ -85,37 +107,18 @@ async function startBot() {
             return;
         }
 
-        // 2. AD CARD
-        const botId = jidDecode(sock.user.id).user + '@s.whatsapp.net';
-        const mentions = msg.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
-        if (mentions.includes(botId)) {
-             await sock.sendMessage(sender, {
-                text: `Hello @${sender.split('@')[0]}!`,
-                mentions: [sender],
-                contextInfo: {
-                    externalAdReply: {
-                        title: config.adName,
-                        body: config.adSlogan,
-                        thumbnailUrl: "https://i.imgur.com/P5yUpuM.png",
-                        sourceUrl: config.adLink,
-                        mediaType: 1,
-                        renderLargerThumbnail: true
-                    }
-                }
-            }, { quoted: msg });
-        }
-
-        // 3. COMMANDS
+        // 2. COMMANDS
         if (body.startsWith(config.prefix)) {
             const args = body.slice(config.prefix.length).trim().split(/ +/);
             const cmdName = args.shift().toLowerCase();
             const command = commands.get(cmdName);
             if (command) {
+                // Get User from Supabase
                 let user = await User.findOne({ id: sender });
                 if (!user) user = await User.create({ id: sender, name: msg.pushName });
-                
+
                 const isOwner = sender === config.ownerNumber;
-                const isSudo = user.role === 'sudo' || isOwner;
+                const isSudo = user?.role === 'sudo' || isOwner;
 
                 try {
                     await command.execute(sock, msg, args, user, isSudo, isOwner);
