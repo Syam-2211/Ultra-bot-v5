@@ -4,7 +4,7 @@ module.exports = {
     ownerName: "𝑆𝑌𝛥𝛭.3𝐹𝛸",
     botName: "🤍⃞𝄟ꪶ𝐒͢ʏ᪳ᴀ͓ᴍ͎ ͢𝐒ᴇ͓ꪳʀ͎𖦻⃞🍓",
     sessionID: process.env.SESSION_ID || "",
-    workMode: "public",
+    workMode: "private",
 
     // 🟢 YOUR SUPABASE KEYS (Pre-filled) 🟢
     supabaseUrl: "https://ooplqtykhpmxidrpnolz.supabase.co", 
