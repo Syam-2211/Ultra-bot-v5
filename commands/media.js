@@ -5,12 +5,11 @@ module.exports = {
         const cmd = msg.message.conversation?.split(" ")[0].slice(1) || msg.message.extendedTextMessage?.text?.split(" ")[0].slice(1);
         const remoteJid = msg.key.remoteJid;
 
-        // --- 1. AI CHAT (New API) ---
+        // --- 1. AI CHAT (Switched to BK9 API - More Stable) ---
         if (cmd === 'ai' || cmd === 'gpt') {
             if (!args[0]) return sock.sendMessage(remoteJid, { text: '❌ Ask something! Ex: .ai Who is Ironman?' });
             try {
                 const fetch = (await import('node-fetch')).default;
-                // Switched to a more stable free endpoint
                 const res = await fetch(`https://bk9.fun/ai/chatgpt?q=${encodeURIComponent(args.join(" "))}`);
                 const json = await res.json();
                 if (json.BK9) {
@@ -23,7 +22,7 @@ module.exports = {
             }
         }
 
-        // --- 2. IMAGE GENERATOR (Pollinations - Always Free) ---
+        // --- 2. IMAGE GENERATOR ---
         if (cmd === 'img') {
             if (!args[0]) return sock.sendMessage(remoteJid, { text: '❌ Give a prompt! Ex: .img cat in space' });
             try {
@@ -37,14 +36,13 @@ module.exports = {
             }
         }
 
-        // --- 3. SONG DOWNLOADER (New API) ---
+        // --- 3. SONG DOWNLOADER (Switched to Siputzx API) ---
         if (cmd === 'play') {
             if (!args[0]) return sock.sendMessage(remoteJid, { text: '❌ Give a song name! Ex: .play Believer' });
             try {
                 await sock.sendMessage(remoteJid, { text: '🔍 Searching & Downloading...' });
                 const fetch = (await import('node-fetch')).default;
                 
-                // New API for YtMp3
                 const res = await fetch(`https://api.siputzx.my.id/api/d/ytmp3?url=${encodeURIComponent(args.join(" "))}`);
                 const json = await res.json();
 
@@ -59,7 +57,7 @@ module.exports = {
                 }
             } catch (e) {
                 console.log(e);
-                await sock.sendMessage(remoteJid, { text: '❌ Server overloaded. Try searching the exact link.' });
+                await sock.sendMessage(remoteJid, { text: '❌ Song not found or Server overloaded.' });
             }
         }
         
