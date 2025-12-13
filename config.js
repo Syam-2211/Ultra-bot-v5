@@ -4,17 +4,12 @@ module.exports = {
     ownerName: "𝑆𝑌𝛥𝛭.3𝐹𝛸",
     botName: "🤍⃞𝄟ꪶ𝐒͢ʏ᪳ᴀ͓ᴍ͎ ͢𝐒ᴇ͓ꪳʀ͎𖦻⃞🍓",
     sessionID: process.env.SESSION_ID || "",
-    workMode: "private",
+    workMode: "public",
 
-    // 🟢 YOUR SUPABASE KEYS (Pre-filled) 🟢
-    supabaseUrl: "https://ooplqtykhpmxidrpnolz.supabase.co", 
-    supabaseKey: "sb_publishable_iT1AF8ZdvYrg2ixAcPjMKw_iFQRiV_A",
+    // 🟢 NEON DATABASE CONFIG (CLEANED) 🟢
+    databaseUrl: "postgresql://neondb_owner:npg_ZgMheS8qa1WC@ep-quiet-darkness-a1ep2ttg-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require",
 
-    // 🔴 MONGODB (Empty to prevent errors)
-    mongoURL: "", 
-
-    // Auto-Reply Settings
     adName: "𝑆𝑌𝛥𝛭.3𝐹𝛸",
     adSlogan: "🤍⃞𝄟ꪶ𝐒͢ʏ᪳ᴀ͓ᴍ͎ ͢𝐒ᴇ͓ꪳʀ͎𖦻⃞🍓",
-    adLink: "https://instagram.com"
+    adLink: "https://instagram.com/_mr.fro_ud_"
 }
