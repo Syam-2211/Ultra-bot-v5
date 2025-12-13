@@ -1,45 +1,50 @@
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 const config = require('./config');
 
-// Initialize Supabase
-const supabase = createClient(config.supabaseUrl, config.supabaseKey);
+const pool = new Pool({
+    connectionString: config.databaseUrl,
+    ssl: { rejectUnauthorized: false }
+});
 
 const connectDB = async () => {
-    // Test the connection
-    const { error } = await supabase.from('users').select('id').limit(1);
-    if (error) {
-        console.log("❌ Supabase Error:", error.message);
-    } else {
-        console.log("✅ Connected to Supabase (PostgreSQL) Successfully!");
+    try {
+        await pool.query('SELECT NOW()');
+        console.log("✅ Connected to Neon PostgreSQL!");
+    } catch (e) {
+        console.log("❌ Neon Connection Failed:", e.message);
     }
 };
 
-// User Model Wrapper
 const User = {
     findOne: async ({ id }) => {
-        const { data } = await supabase.from('users').select('*').eq('id', id).single();
-        if (!data) return null;
+        const res = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+        if (res.rows.length === 0) return null;
         return {
-            ...data,
+            ...res.rows[0],
             save: async function() {
-                await supabase.from('users').update({ 
-                    wallet: this.wallet, warns: this.warns, role: this.role, isbanned: this.isbanned 
-                }).eq('id', this.id);
+                await pool.query(
+                    'UPDATE users SET wallet=$1, warns=$2, role=$3, isbanned=$4 WHERE id=$5',
+                    [this.wallet, this.warns, this.role, this.isbanned, this.id]
+                );
             }
         };
     },
     create: async ({ id, name }) => {
         const newUser = { id, name, wallet: 0, warns: 0, role: 'user', isbanned: false };
-        await supabase.from('users').insert([newUser]);
+        await pool.query(
+            'INSERT INTO users (id, name, wallet, warns, role, isbanned) VALUES ($1, $2, $3, $4, $5, $6)',
+            [id, name, 0, 0, 'user', false]
+        );
         return {
             ...newUser,
             save: async function() {
-                await supabase.from('users').update({ 
-                    wallet: this.wallet, warns: this.warns, role: this.role, isbanned: this.isbanned 
-                }).eq('id', this.id);
+                await pool.query(
+                    'UPDATE users SET wallet=$1, warns=$2, role=$3, isbanned=$4 WHERE id=$5',
+                    [this.wallet, this.warns, this.role, this.isbanned, this.id]
+                );
             }
         };
     }
 };
 
-module.exports = { connectDB, User };
+module.exports = { connectDB, User, pool };
