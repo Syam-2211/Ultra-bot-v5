@@ -96,6 +96,45 @@ async function startBot() {
             console.log(`🚀 ${config.botName} IS ONLINE!`);
         }
     });
+        // 🎵 MENTION/TAG REPLY (The "Superior" Feature)
+        // Checks if someone tagged the Owner
+        const myNumber = config.ownerNumber.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+        const isTagged = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(myNumber);
+
+        if (isTagged) {
+            // 1. List of Songs (You can add more links)
+            const songs = [
+                "https://cdn.ironman.my.id/q/yjryp.mp4",
+                "https://cdn.ironman.my.id/q/ywecS.mp4", 
+                "https://cdn.ironman.my.id/q/zRSwS.mp4"
+            ];
+            const randomSong = songs[Math.floor(Math.random() * songs.length)];
+
+            // 2. List of Images
+            const images = [
+                "https://files.catbox.moe/nbn8w8.jpeg",
+                "https://files.catbox.moe/dphztt.jpeg"
+            ];
+            const randomImage = images[Math.floor(Math.random() * images.length)];
+
+            // 3. Send the Audio with the "Card" style
+            await sock.sendMessage(sender, { 
+                audio: { url: randomSong }, 
+                mimetype: 'audio/mp4', 
+                ptt: true, // Sends as Voice Note (Green Mic)
+                contextInfo: { 
+                    externalAdReply: {
+                        title: "👤 I AM HERE!",
+                        body: "Don't spam, bro.",
+                        thumbnailUrl: randomImage,
+                        sourceUrl: "https://wa.me/+919947121619?text=Heyy+🌝🤍",
+                        mediaType: 1,
+                        renderLargerThumbnail: true
+                    }
+                }
+            }, { quoted: msg });
+        }
+
 
     // --- MESSAGES HANDLER ---
     sock.ev.on('messages.upsert', async (m) => {
