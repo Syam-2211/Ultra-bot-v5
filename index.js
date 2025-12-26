@@ -3,14 +3,17 @@ const pino = require('pino');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
-const { connectDB, User, pool } = require('./database'); // Using 'pool' for Neon
+const { connectDB, User, pool } = require('./database');
 const config = require('./config');
+
+// 🔌 IMPORT PLUGINS
+const mentionPlugin = require('./plugins/mention'); 
 
 // 1. Connect Database & Start Server
 connectDB();
 const server = http.createServer((req, res) => {
     res.writeHead(200);
-    res.end(`Bot Status: Online (Neon DB)`);
+    res.end(`Bot Status: Online`);
 });
 server.listen(process.env.PORT || 3000);
 
@@ -23,14 +26,13 @@ fs.readdirSync(cmdFolder).forEach(file => {
         const cmd = require(path.join(cmdFolder, file));
         commands.set(cmd.name, cmd);
         if (cmd.alias) cmd.alias.forEach(a => commands.set(a, cmd));
-        console.log(`🔌 Loaded Plugin: ${cmd.name}`);
+        console.log(`🔌 Loaded Command: ${cmd.name}`);
     }
 });
 
 async function startBot() {
-    // 🟢 AUTH RESTORE (FROM NEON) 🟢
+    // 🟢 AUTH RESTORE (FROM NEON)
     try {
-        // We check if a session exists in the 'auth' table
         const res = await pool.query('SELECT session_data FROM auth WHERE id = $1', ['creds']);
         if (res.rows.length > 0) {
             if (!fs.existsSync('./auth_info')) fs.mkdirSync('./auth_info');
@@ -54,13 +56,12 @@ async function startBot() {
         connectTimeoutMs: 60000, 
     });
 
-    // 🟢 AUTH SAVE (TO NEON) 🟢
+    // 🟢 AUTH SAVE (TO NEON)
     sock.ev.on('creds.update', async () => {
         await saveCreds();
         try {
             if (fs.existsSync('./auth_info/creds.json')) {
                 const content = fs.readFileSync('./auth_info/creds.json', 'utf-8');
-                // This saves the file to Neon. If it exists, it updates it.
                 await pool.query(
                     'INSERT INTO auth (id, session_data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET session_data = $2',
                     ['creds', content]
@@ -96,49 +97,6 @@ async function startBot() {
             console.log(`🚀 ${config.botName} IS ONLINE!`);
         }
     });
-                // 🎵 MENTION/TAG REPLY
-        // We renamed 'myNumber' to 'ownerJid' to fix the crash
-        const ownerJid = config.ownerNumber.replace(/[^0-9]/g, '') + '@s.whatsapp.net'; 
-        
-        // We use 'ownerJid' here now
-        const isTagged = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(ownerJid);
-
-        if (isTagged) {
-            // 1. List of Songs
-            const songs = [
-                "https://cdn.ironman.my.id/q/yjryp.mp4",
-                "https://cdn.ironman.my.id/q/ywecS.mp4", 
-                "https://cdn.ironman.my.id/q/zRSwS.mp4"
-            ];
-            // ... rest of your code
-
-            const randomSong = songs[Math.floor(Math.random() * songs.length)];
-
-            // 2. List of Images
-            const images = [
-                "https://files.catbox.moe/nbn8w8.jpeg",
-                "https://files.catbox.moe/dphztt.jpeg"
-            ];
-            const randomImage = images[Math.floor(Math.random() * images.length)];
-
-            // 3. Send the Audio with the "Card" style
-            await sock.sendMessage(sender, { 
-                audio: { url: randomSong }, 
-                mimetype: 'audio/mp4', 
-                ptt: true, // Sends as Voice Note (Green Mic)
-                contextInfo: { 
-                    externalAdReply: {
-                        title: "👤 I AM HERE!",
-                        body: "Don't spam, bro.",
-                        thumbnailUrl: randomImage,
-                        sourceUrl: "https://wa.me/+919947121619?text=Heyy+🌝🤍",
-                        mediaType: 1,
-                        renderLargerThumbnail: true
-                    }
-                }
-            }, { quoted: msg });
-        }
-
 
     // --- MESSAGES HANDLER ---
     sock.ev.on('messages.upsert', async (m) => {
@@ -148,13 +106,33 @@ async function startBot() {
         const sender = msg.key.remoteJid;
         const body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
 
+        // 🔌 RUN PLUGINS (Tag Reply)
+        try {
+            await mentionPlugin.handle(sock, msg);
+        } catch (e) {
+            console.log("Plugin Error:", e);
+        }
+
+        // 🛡️ ANTI-LINK CHECK
+        if (body.includes('chat.whatsapp.com') && !msg.key.fromMe) {
+            if (sender.endsWith('@g.us')) {
+                const groupMetadata = await sock.groupMetadata(sender);
+                const participant = groupMetadata.participants.find(p => p.id === msg.key.participant);
+                if (!participant?.admin) {
+                    await sock.sendMessage(sender, { delete: msg.key });
+                    await sock.sendMessage(sender, { text: `🚫 No Links!` });
+                    return;
+                }
+            }
+        }
+
+        // ⚡ COMMAND HANDLER
         if (body.startsWith(config.prefix)) {
             const args = body.slice(config.prefix.length).trim().split(/ +/);
             const cmdName = args.shift().toLowerCase();
             const command = commands.get(cmdName);
 
             if (command) {
-                // Fetch user from Neon
                 let user = { role: 'user' };
                 try {
                      const u = await User.findOne({ id: sender });
