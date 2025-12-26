@@ -96,18 +96,22 @@ async function startBot() {
             console.log(`🚀 ${config.botName} IS ONLINE!`);
         }
     });
-        // 🎵 MENTION/TAG REPLY (The "Superior" Feature)
-        // Checks if someone tagged the Owner
-        const myNumber = config.ownerNumber.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-        const isTagged = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(myNumber);
+                // 🎵 MENTION/TAG REPLY
+        // We renamed 'myNumber' to 'ownerJid' to fix the crash
+        const ownerJid = config.ownerNumber.replace(/[^0-9]/g, '') + '@s.whatsapp.net'; 
+        
+        // We use 'ownerJid' here now
+        const isTagged = msg.message.extendedTextMessage?.contextInfo?.mentionedJid?.includes(ownerJid);
 
         if (isTagged) {
-            // 1. List of Songs (You can add more links)
+            // 1. List of Songs
             const songs = [
                 "https://cdn.ironman.my.id/q/yjryp.mp4",
                 "https://cdn.ironman.my.id/q/ywecS.mp4", 
                 "https://cdn.ironman.my.id/q/zRSwS.mp4"
             ];
+            // ... rest of your code
+
             const randomSong = songs[Math.floor(Math.random() * songs.length)];
 
             // 2. List of Images
