@@ -13,19 +13,30 @@ module.exports = {
 .ping - Speed check
 .menu - Ee list kaanam
 
-*🛡️ Admin (Boss Only)*
-.kick @user - Purath aakkal
-.add 919... - add aakkal
-.promote @user - admin kodukkal
-.demote @user - admin edukkal
-.tagall [msg] - Ellarem vilikkan
-.hidetag [msg] - Invisible tag
+*📥 Downloads (No Watermark)*
+.insta [link] - Instagram Reels/Post
+.tiktok [link] - TikTok Video
+.fb [link] - Facebook Video
+.play [song] - Pattu download
+
+*🔍 Search Tools*
+.google [query] - Google Search
+.wiki [query] - Wikipedia
+.lyrics [song] - Pattu varikal
 
 *🎨 Fun & Media*
 .ai [doubt] - AI-yod samsarikkaam
 .img [text] - Photo undakkam
-.play [song] - Pattu download
 .sticker - Photo sticker aakkan
+.tts [text] - Parayippikkal (Text-to-Speech)
+
+*🛡️ Admin (Boss Only)*
+.kick @user - Purath aakkal
+.add 919... - Agath aakkal
+.promote @user - Power kodukkal
+.demote @user - Power edukkal
+.tagall [msg] - Ellarem vilikkan
+.hidetag [msg] - Invisible tag
 .vv - ViewOnce photo edukkan (Reply)
 `;
 
@@ -34,10 +45,10 @@ module.exports = {
             text: text,
             contextInfo: { 
                 externalAdReply: {
-                    title: config.botName,       // Shows your Bot Name
-                    body: "Tap here to follow!", // Subtitle
-                    thumbnailUrl: "https://files.catbox.moe/mev5cq.jpeg", // 🖼️ CHANGE THIS to your logo link!
-                    sourceUrl: "https://instagram.com/_mr.fro_ud_",         // 🔗 Link to your Insta
+                    title: config.botName,       
+                    body: "Tap here to follow!", 
+                    thumbnailUrl: "https://i.imgur.com/P5yUpuM.png", // 🖼️ Your Logo
+                    sourceUrl: "https://instagram.com/syam",         
                     mediaType: 1,
                     renderLargerThumbnail: true
                 }
